@@ -1,0 +1,107 @@
+"""Onglet 1 — Paramètres (formulaire d'entrées + sync vers le Store)."""
+from dash import dcc, html, Input, Output, State
+import dash_bootstrap_components as dbc
+
+from inputs import PropertyInputs
+from theme import COLORS
+from components import _section
+from state import FIELD_SECTIONS, EDITABLE_FIELDS, default_store_dict
+
+
+def render():
+    inp = PropertyInputs()
+    cols = []
+    for title, icon, flist in FIELD_SECTIONS:
+        rows = []
+        for attr, libelle, widget in flist:
+            current = getattr(inp, attr)
+            if widget == "bool":
+                options = ([{"label": "Oui (condo)", "value": True},
+                            {"label": "Non (maison/plex)", "value": False}]
+                           if attr == "est_condo" else
+                           [{"label": "Oui", "value": True},
+                            {"label": "Non", "value": False}])
+                ctrl = dcc.Dropdown(id={"type": "inp", "name": attr},
+                                    options=options, value=bool(current),
+                                    clearable=False)
+            else:
+                ctrl = dbc.Input(id={"type": "inp", "name": attr},
+                                 type="number", value=current, size="sm")
+            rows.append(dbc.Row([
+                dbc.Col(html.Label(libelle, className="form-label-row"),
+                        md=6, className="d-flex align-items-center"),
+                dbc.Col(ctrl, md=6),
+            ], className="mb-2"))
+        cols.append(dbc.Col(_section(title, rows, icon=icon), md=6, lg=4))
+
+    # Jalons étude pluriannuelle
+    jalons_default = ", ".join(str(j) for j in inp.jalons_etude)
+    cols.append(dbc.Col(_section(
+        "Jalons étude pluriannuelle",
+        [dbc.Row([
+            dbc.Col(html.Label("Années séparées par des virgules",
+                               className="form-label-row"),
+                    md=6, className="d-flex align-items-center"),
+            dbc.Col(dbc.Input(id="inp-jalons", type="text",
+                              value=jalons_default, size="sm"), md=6),
+        ])], icon="bi-flag"), md=6, lg=4))
+
+    return html.Div([
+        html.Div([
+            html.H4([html.I(className="bi bi-sliders2 me-2"),
+                     "Paramètres de l'investissement"], className="mb-1"),
+            html.P("Tous les onglets se mettent à jour automatiquement "
+                   "lorsque vous modifiez une valeur.",
+                   className="text-muted"),
+            # Barre d'actions Export / Import
+            dbc.Row([
+                dbc.Col([
+                    dbc.Button([html.I(className="bi bi-download me-2"),
+                                "Exporter (JSON)"],
+                               id="btn-export", color="primary",
+                               outline=True, size="sm", className="me-2"),
+                    dcc.Upload(
+                        id="upload-json",
+                        children=dbc.Button(
+                            [html.I(className="bi bi-upload me-2"),
+                             "Importer (JSON)"],
+                            color="secondary", outline=True, size="sm"),
+                        multiple=False, accept=".json",
+                        style={"display": "inline-block"},
+                    ),
+                    dcc.Download(id="download-json"),
+                ], md=12),
+            ], className="mb-2"),
+            html.Div(id="inputs-status",
+                     style={"color": COLORS["success"], "fontWeight": 500,
+                            "marginBottom": "14px"}),
+            html.Div(id="import-status",
+                     style={"fontWeight": 500, "marginBottom": "10px"}),
+        ]),
+        dbc.Row(cols, className="g-3"),
+    ], className="p-4")
+
+
+def register_callbacks(app):
+    @app.callback(
+        Output("store-inputs", "data"),
+        Output("inputs-status", "children"),
+        [Input({"type": "inp", "name": attr}, "value")
+         for attr, _, _ in EDITABLE_FIELDS],
+        Input("inp-jalons", "value"),
+        State("store-inputs", "data"),
+    )
+    def sync_inputs(*args):
+        *values, jalons_str, current = args
+        data = dict(current) if current else default_store_dict()
+        for (attr, _, _), v in zip(EDITABLE_FIELDS, values):
+            data[attr] = v
+        if jalons_str:
+            try:
+                data["jalons_etude"] = [int(x.strip())
+                                        for x in str(jalons_str).split(",")
+                                        if x.strip()]
+            except Exception:
+                pass
+        return data, "Paramètres mis à jour ✓"
+

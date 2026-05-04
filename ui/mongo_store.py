@@ -20,6 +20,7 @@ _lock = threading.Lock()
 _client = None
 _db = None
 _init_done = False
+from pymongo import MongoClient
 
 
 def _init() -> None:
@@ -39,8 +40,15 @@ def _init() -> None:
             print("[mongo_store] pymongo non installé — fallback JSON.")
             return
         try:
-            _client = MongoClient(uri, serverSelectionTimeoutMS=5000,
-                                  appname="rea_est_ui")
+            import certifi
+
+            _client = MongoClient(
+                uri,
+                serverSelectionTimeoutMS=5000,
+                appname="rea_est_ui",
+                tlsCAFile=certifi.where()
+            )
+
             # Force la résolution pour échouer vite si l'URI est mauvaise.
             _client.admin.command("ping")
             _db = _client[os.environ.get("MONGODB_DB", "rea_est_app")]

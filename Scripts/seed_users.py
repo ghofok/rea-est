@@ -1,7 +1,16 @@
 import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "ui"))
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
+print("Chemin du fichier .env:", env_path)
+print("Existence du fichier .env:", os.path.exists(env_path))
+
+loaded = load_dotenv(env_path)
+
+print("Fichier .env chargé:", loaded)
+print("mongo_uri lu:", bool(os.getenv("MONGODB_URI")))
+print("Valeur (début):", os.getenv("MONGODB_URI")[:10] if os.getenv("MONGODB_URI") else "None")
+
 import mongo_store
 
 if not mongo_store.is_enabled():

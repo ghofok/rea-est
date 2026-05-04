@@ -1,7 +1,10 @@
 {
   "users": [
     { "email": "ghofril.kahwati@gmail.com", "password": "0000", "is_admin": true },
-    { "email": "user@example.com",  "password": "changeme" }
+    { "email": "user@example.com",  "password": "changeme" },
+    { "email": "carl.abdelnour95@gmail.com", "password": "1995" },
+    { "email": "elias.khayat@gmail.com", "password": "1993" }
+
   ]
 }
 

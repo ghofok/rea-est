@@ -50,7 +50,7 @@ def _init() -> None:
             )
             # Force la résolution pour échouer vite si l'URI est mauvaise.
             _client.admin.command("ping")
-            _db = _client[os.environ.get("MONGODB_DB", "rea_est")]
+            _db = _client[os.environ.get("MONGODB_DB", "rea_est_app")]
             print("[mongo_store] connecté à MongoDB.")
         except Exception as exc:  # pragma: no cover
             print(f"[mongo_store] connexion MongoDB échouée: {exc}")

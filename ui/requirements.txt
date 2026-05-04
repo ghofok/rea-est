@@ -4,3 +4,5 @@ dash-bootstrap-components>=1.5
 gunicorn>=21.2
 pymongo>=4.6
 dnspython>=2.4
+python-dotenv
+dnspython

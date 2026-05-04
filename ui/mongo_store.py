@@ -72,6 +72,39 @@ def scenarios_collection():
     return db[os.environ.get("MONGODB_SCENARIOS", "scenarios")]
 
 
+def preferences_collection():
+    """Préférences UI par utilisateur (langue, dernier onglet, etc.)."""
+    db = get_db()
+    if db is None:
+        return None
+    return db[os.environ.get("MONGODB_PREFS", "preferences")]
+
+
+def activity_collection():
+    """Journal d'activité (audit log) — append-only."""
+    db = get_db()
+    if db is None:
+        return None
+    return db[os.environ.get("MONGODB_ACTIVITY", "activity")]
+
+
+def log_activity(email: str | None, action: str, **extra) -> None:
+    """Append un événement (login, logout, save, import, export, ...)."""
+    col = activity_collection()
+    if col is None or not email:
+        return
+    import datetime as _dt
+    try:
+        col.insert_one({
+            "email": str(email).strip().lower(),
+            "action": action,
+            "ts": _dt.datetime.utcnow(),
+            **{k: v for k, v in extra.items() if v is not None},
+        })
+    except Exception as exc:  # pragma: no cover
+        print(f"[mongo_store] activity log error: {exc}")
+
+
 def is_enabled() -> bool:
     return get_db() is not None
 

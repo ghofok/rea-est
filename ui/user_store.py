@@ -8,6 +8,7 @@ Stockage :
   PaaS le filesystem est éphémère, on recommande Mongo en prod.
 """
 from __future__ import annotations
+import datetime as _dt
 import hashlib
 import json
 import os
@@ -108,16 +109,64 @@ def _save_to_mongo(email: str, payload: dict) -> bool:
     if col is None:
         return False
     try:
+        now = _dt.datetime.utcnow()
         col.update_one(
             {"_id": email},
-            {"$set": {"active": payload["active"],
-                      "scenarios": payload["scenarios"]}},
+            {
+                "$set": {
+                    "email": email,
+                    "active": payload["active"],
+                    "scenarios": payload["scenarios"],
+                    "updated_at": now,
+                },
+                "$setOnInsert": {"created_at": now},
+                "$inc": {"save_count": 1},
+            },
             upsert=True,
         )
         return True
     except Exception as exc:  # pragma: no cover
         print(f"[user_store] Mongo save error: {exc}")
         return False
+
+
+# --------------------------------------------------------------------- #
+# Préférences utilisateur (langue, dernier onglet, etc.)
+# --------------------------------------------------------------------- #
+def load_preferences(email: str | None) -> dict:
+    """Retourne les préférences UI (``{"lang": "fr", ...}``)."""
+    email = _norm(email)
+    if not email or not mongo_store.is_enabled():
+        return {}
+    col = mongo_store.get_db()
+    if col is None:
+        return {}
+    try:
+        doc = col["preferences"].find_one({"_id": email}) or {}
+        doc.pop("_id", None)
+        return doc
+    except Exception as exc:  # pragma: no cover
+        print(f"[user_store] prefs load error: {exc}")
+        return {}
+
+
+def save_preferences(email: str | None, prefs: dict) -> None:
+    email = _norm(email)
+    if not email or not isinstance(prefs, dict) or not prefs:
+        return
+    if not mongo_store.is_enabled():
+        return
+    db = mongo_store.get_db()
+    if db is None:
+        return
+    try:
+        db["preferences"].update_one(
+            {"_id": email},
+            {"$set": {**prefs, "updated_at": _dt.datetime.utcnow()}},
+            upsert=True,
+        )
+    except Exception as exc:  # pragma: no cover
+        print(f"[user_store] prefs save error: {exc}")
 
 
 # --------------------------------------------------------------------- #

@@ -202,6 +202,11 @@ def init_auth(app) -> None:
             if _check_credentials(email, password):
                 session.clear()
                 session["user"] = email.lower()
+                try:
+                    mongo_store.log_activity(email, "login",
+                                             ip=request.remote_addr)
+                except Exception:
+                    pass
                 if not next_url.startswith("/"):
                     next_url = "/"
                 return redirect(next_url)
@@ -210,6 +215,10 @@ def init_auth(app) -> None:
 
     @server.route("/logout")
     def logout():
+        try:
+            mongo_store.log_activity(session.get("user"), "logout")
+        except Exception:
+            pass
         session.clear()
         return redirect(url_for("login"))
 

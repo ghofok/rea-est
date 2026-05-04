@@ -29,6 +29,13 @@ from __future__ import annotations
 import os
 import sys
 
+# Charge .env (E:\rea_est\.env) si présent — dev local uniquement.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(__file__), os.pardir, ".env"))
+except ImportError:
+    pass
+
 # Permet d'importer les modules de calcul du dossier parent
 _PARENT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 if _PARENT not in sys.path:

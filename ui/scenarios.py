@@ -122,7 +122,17 @@ def register_callbacks(app):
         try:
             from flask import session
             from user_store import save_scenarios
-            save_scenarios(session.get("user"), scn)
+            import mongo_store
+            email = session.get("user")
+            save_scenarios(email, scn)
+            try:
+                mongo_store.log_activity(
+                    email, "save_scenarios",
+                    active=(scn or {}).get("active"),
+                    n_scenarios=len((scn or {}).get("scenarios") or {}),
+                )
+            except Exception:
+                pass
         except Exception:
             pass
         return no_update

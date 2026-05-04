@@ -7,6 +7,7 @@ from state import default_store_dict
 from scenarios import default_scenarios_dict, render_sidebar
 from user_store import load_scenarios
 from i18n import t, get_lang
+from admin import is_admin
 from tabs import (inputs_tab, down_payment_tab, cashflow_tab,
                   study_tab, amortization_tab, sensitivity_tab)
 
@@ -34,6 +35,8 @@ def build_layout():
     scn = _initial_scenarios()
     inputs0 = _initial_inputs(scn)
     lang = get_lang()
+    current_email = session.get("user") if has_request_context() else None
+    show_admin = is_admin(current_email)
     navbar = dbc.Navbar(
         dbc.Container([
             dbc.NavbarBrand([html.I(className="bi bi-building me-2"),
@@ -52,6 +55,14 @@ def build_layout():
                            "color": "#212529",
                            "marginRight": "1rem"},
                 ),
+                *([html.A([html.I(className="bi bi-shield-lock me-1"),
+                           "Admin"],
+                          href="/admin",
+                          style={"color": "rgba(255,255,255,0.9)",
+                                 "textDecoration": "none",
+                                 "fontWeight": 500,
+                                 "marginRight": "1rem"})]
+                  if show_admin else []),
                 html.A([html.I(className="bi bi-box-arrow-right me-1"),
                         t("logout")],
                        href="/logout",

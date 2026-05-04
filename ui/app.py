@@ -48,6 +48,7 @@ from theme import INDEX_STRING
 from layout import build_layout
 import scenarios as scenarios_mod
 import auth as auth_mod
+import admin as admin_mod
 import i18n as i18n_mod
 from tabs import (inputs_tab, down_payment_tab, cashflow_tab,
                   study_tab, amortization_tab, sensitivity_tab, io_json)
@@ -80,6 +81,8 @@ def create_app() -> dash.Dash:
 
     # Authentification email + mot de passe (users.json)
     auth_mod.init_auth(app)
+    # Page d'administration des utilisateurs (/admin) — réservée aux admins.
+    admin_mod.init_admin(app)
     return app
 
 

@@ -213,6 +213,62 @@ def init_auth(app) -> None:
             return _render(T["invalid_credentials"], email)
         return _render(None, "")
 
+    @server.route("/_debug/mongo")
+    def _debug_mongo():
+        """Diagnostic en direct : à ouvrir sur l'URL Render pour vérifier
+        connexion Mongo, users, scénarios sauvegardés.
+        Sécurisé via la variable d'env DEBUG_TOKEN si définie."""
+        token = os.environ.get("DEBUG_TOKEN", "")
+        if token and request.args.get("token") != token:
+            return jsonify(error="forbidden"), 403
+        info = {
+            "mongo_uri_set": bool(os.environ.get("MONGODB_URI")),
+            "mongo_db_env": os.environ.get("MONGODB_DB"),
+            "mongo_users_env": os.environ.get("MONGODB_USERS"),
+            "mongo_scenarios_env": os.environ.get("MONGODB_SCENARIOS"),
+            "is_enabled": False,
+            "db_name": None,
+            "users_count": None,
+            "users_emails_preview": [],
+            "scenarios_count": None,
+            "scenarios_emails_preview": [],
+            "current_session_user": session.get("user"),
+            "current_user_scenarios": None,
+            "error": None,
+        }
+        try:
+            db = mongo_store.get_db()
+            info["is_enabled"] = db is not None
+            if db is not None:
+                info["db_name"] = db.name
+                col = mongo_store.users_collection()
+                info["users_count"] = col.count_documents({})
+                info["users_emails_preview"] = [
+                    str(d.get("email") or d.get("_id"))
+                    for d in col.find({}, {"_id": 1, "email": 1}).limit(20)
+                ]
+                scol = mongo_store.scenarios_collection()
+                if scol is not None:
+                    info["scenarios_count"] = scol.count_documents({})
+                    info["scenarios_emails_preview"] = [
+                        str(d.get("_id"))
+                        for d in scol.find({}, {"_id": 1}).limit(20)
+                    ]
+                    cur = (session.get("user") or "").strip().lower()
+                    if cur:
+                        doc = scol.find_one({"_id": cur})
+                        if doc:
+                            info["current_user_scenarios"] = {
+                                "active": doc.get("active"),
+                                "names": list((doc.get("scenarios")
+                                               or {}).keys()),
+                                "save_count": doc.get("save_count"),
+                                "updated_at": str(doc.get("updated_at")),
+                            }
+        except Exception as exc:
+            info["error"] = repr(exc)
+        return jsonify(info)
+
     @server.route("/logout")
     def logout():
         try:

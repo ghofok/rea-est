@@ -5,22 +5,24 @@ import dash_bootstrap_components as dbc
 from inputs import PropertyInputs
 from theme import COLORS
 from components import _section
-from state import FIELD_SECTIONS, EDITABLE_FIELDS, default_store_dict
+from state import (FIELD_SECTIONS, EDITABLE_FIELDS, default_store_dict,
+                   field_sections_translated)
+from i18n import t
 
 
 def render():
     inp = PropertyInputs()
     cols = []
-    for title, icon, flist in FIELD_SECTIONS:
+    for title, icon, flist in field_sections_translated():
         rows = []
         for attr, libelle, widget in flist:
             current = getattr(inp, attr)
             if widget == "bool":
-                options = ([{"label": "Oui (condo)", "value": True},
-                            {"label": "Non (maison/plex)", "value": False}]
+                options = ([{"label": t("yes_condo"), "value": True},
+                            {"label": t("no_condo"),  "value": False}]
                            if attr == "est_condo" else
-                           [{"label": "Oui", "value": True},
-                            {"label": "Non", "value": False}])
+                           [{"label": t("yes"), "value": True},
+                            {"label": t("no"),  "value": False}])
                 ctrl = dcc.Dropdown(id={"type": "inp", "name": attr},
                                     options=options, value=bool(current),
                                     clearable=False)
@@ -37,9 +39,9 @@ def render():
     # Jalons étude pluriannuelle
     jalons_default = ", ".join(str(j) for j in inp.jalons_etude)
     cols.append(dbc.Col(_section(
-        "Jalons étude pluriannuelle",
+        t("milestones_title"),
         [dbc.Row([
-            dbc.Col(html.Label("Années séparées par des virgules",
+            dbc.Col(html.Label(t("milestones_help"),
                                className="form-label-row"),
                     md=6, className="d-flex align-items-center"),
             dbc.Col(dbc.Input(id="inp-jalons", type="text",
@@ -49,22 +51,20 @@ def render():
     return html.Div([
         html.Div([
             html.H4([html.I(className="bi bi-sliders2 me-2"),
-                     "Paramètres de l'investissement"], className="mb-1"),
-            html.P("Tous les onglets se mettent à jour automatiquement "
-                   "lorsque vous modifiez une valeur.",
-                   className="text-muted"),
+                     t("inputs_title")], className="mb-1"),
+            html.P(t("inputs_help"), className="text-muted"),
             # Barre d'actions Export / Import
             dbc.Row([
                 dbc.Col([
                     dbc.Button([html.I(className="bi bi-download me-2"),
-                                "Exporter (JSON)"],
+                                t("export_json")],
                                id="btn-export", color="primary",
                                outline=True, size="sm", className="me-2"),
                     dcc.Upload(
                         id="upload-json",
                         children=dbc.Button(
                             [html.I(className="bi bi-upload me-2"),
-                             "Importer (JSON)"],
+                             t("import_json")],
                             color="secondary", outline=True, size="sm"),
                         multiple=False, accept=".json",
                         style={"display": "inline-block"},
@@ -85,14 +85,16 @@ def render():
 def register_callbacks(app):
     @app.callback(
         Output("store-inputs", "data"),
+        Output("store-scenarios", "data"),
         Output("inputs-status", "children"),
         [Input({"type": "inp", "name": attr}, "value")
          for attr, _, _ in EDITABLE_FIELDS],
         Input("inp-jalons", "value"),
         State("store-inputs", "data"),
+        State("store-scenarios", "data"),
     )
     def sync_inputs(*args):
-        *values, jalons_str, current = args
+        *values, jalons_str, current, scn = args
         data = dict(current) if current else default_store_dict()
         for (attr, _, _), v in zip(EDITABLE_FIELDS, values):
             data[attr] = v
@@ -103,5 +105,12 @@ def register_callbacks(app):
                                         if x.strip()]
             except Exception:
                 pass
-        return data, "Paramètres mis à jour ✓"
+        # Persistance dans le scénario actif
+        from scenarios import default_scenarios_dict
+        scn = dict(scn) if scn else default_scenarios_dict()
+        scn.setdefault("scenarios", {})
+        active = scn.get("active") or next(iter(scn["scenarios"]), "plex")
+        scn["active"] = active
+        scn["scenarios"][active] = dict(data)
+        return data, scn, t("inputs_updated")
 

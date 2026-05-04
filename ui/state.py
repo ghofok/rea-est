@@ -94,6 +94,72 @@ EDITABLE_FIELDS = [f for _, _, flist in FIELD_SECTIONS for f in flist]
 
 
 # --------------------------------------------------------------------- #
+# Variante traduite (FR / EN) — les libellés sont résolus à chaque appel
+# en lisant le cookie ``lang`` via ``i18n.t``.
+# --------------------------------------------------------------------- #
+# Mapping : section_title_fr → clé i18n
+_SECTION_KEY = {
+    "Propriété": "sec_property",
+    "Hypothèque": "sec_mortgage",
+    "Location": "sec_rental",
+    "Investisseurs": "sec_investors",
+    "Charges initiales d'achat ($)": "sec_initial_costs",
+    "Taux d'indexation (% / an)": "sec_indexation",
+    "Frais de vente": "sec_sale_costs",
+    "Impôts (%)": "sec_taxes",
+    "Analyse": "sec_analysis",
+}
+# Mapping : nom d'attribut → clé i18n
+_FIELD_KEY = {
+    "prix_immobilier": "f_prix_immobilier",
+    "prix_marche": "f_prix_marche",
+    "est_condo": "f_est_condo",
+    "mise_de_fond_pct": "f_mise_de_fond_pct",
+    "duree_hypotheque_ans": "f_duree_hypotheque",
+    "taux_interet": "f_taux_interet",
+    "loyer_annuel_total": "f_loyer_annuel",
+    "taux_vacance": "f_taux_vacance",
+    "appreciation_annuelle": "f_appreciation",
+    "frais_condo_mensuel": "f_frais_condo",
+    "taxes_mun_scol_mensuel": "f_taxes_mun",
+    "nombre_investisseurs": "f_nb_investisseurs",
+    "inspection": "f_inspection",
+    "assurance_prime_initiale": "f_assurance_prime",
+    "frais_divers": "f_frais_divers",
+    "autre_et_travaux_achat": "f_autre_travaux",
+    "occupation_personnelle": "f_occupation_perso",
+    "credit_taxe_bienvenue_max": "f_credit_taxe_max",
+    "taux_augmentation_loyer": "f_taux_loyer",
+    "taux_augmentation_taxes": "f_taux_taxes",
+    "taux_augmentation_assurance": "f_taux_assurance",
+    "taux_augmentation_travaux": "f_taux_travaux",
+    "taux_augmentation_condo": "f_taux_condo",
+    "taux_agent_vente": "f_taux_agent",
+    "autres_frais_vente": "f_autres_frais_vente",
+    "penalite_banque": "f_penalite_banque",
+    "penalite_avant_annee": "f_penalite_avant",
+    "taux_impot_gain_capital": "f_taux_gain_capital",
+    "taux_impot_marginal": "f_taux_marginal",
+    "annees_analyse": "f_annees_analyse",
+}
+
+
+def field_sections_translated():
+    """Retourne ``FIELD_SECTIONS`` avec libellés traduits selon la langue
+    courante (cookie ``lang``)."""
+    from i18n import t
+    out = []
+    for title, icon, flist in FIELD_SECTIONS:
+        new_title = t(_SECTION_KEY.get(title, title))
+        new_flist = []
+        for attr, libelle, widget in flist:
+            new_lib = t(_FIELD_KEY.get(attr, libelle))
+            new_flist.append((attr, new_lib, widget))
+        out.append((new_title, icon, new_flist))
+    return out
+
+
+# --------------------------------------------------------------------- #
 # Conversion Store ↔ PropertyInputs
 # --------------------------------------------------------------------- #
 def build_inputs_from_store(store: dict | None) -> PropertyInputs:

@@ -39,6 +39,9 @@ import dash_bootstrap_components as dbc
 
 from theme import INDEX_STRING
 from layout import build_layout
+import scenarios as scenarios_mod
+import auth as auth_mod
+import i18n as i18n_mod
 from tabs import (inputs_tab, down_payment_tab, cashflow_tab,
                   study_tab, amortization_tab, sensitivity_tab, io_json)
 
@@ -55,7 +58,7 @@ def create_app() -> dash.Dash:
         ],
     )
     app.index_string = INDEX_STRING
-    app.layout = build_layout()
+    app.layout = build_layout
 
     # Enregistrement des callbacks de chaque onglet
     inputs_tab.register_callbacks(app)
@@ -65,6 +68,11 @@ def create_app() -> dash.Dash:
     amortization_tab.register_callbacks(app)
     sensitivity_tab.register_callbacks(app)
     io_json.register_callbacks(app)
+    scenarios_mod.register_callbacks(app)
+    i18n_mod.register_callbacks(app)
+
+    # Authentification email + mot de passe (users.json)
+    auth_mod.init_auth(app)
     return app
 
 
@@ -79,4 +87,4 @@ if __name__ == "__main__":
     # En production : on délègue à un serveur WSGI (gunicorn) qui importe `server`.
     port = int(os.environ.get("PORT", 8050))
     debug = os.environ.get("DASH_DEBUG", "true").lower() == "true"
-    app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=debug)
+    app.run( use_reloader=debug)

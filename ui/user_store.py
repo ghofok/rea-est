@@ -37,8 +37,41 @@ def _is_valid(scn: dict | None) -> bool:
 def _build_payload(scn: dict) -> dict:
     return {
         "active": scn.get("active") or next(iter(scn["scenarios"])),
-        "scenarios": {k: dict(v) for k, v in scn["scenarios"].items()},
+        "scenarios": {k: _sanitize_dict(dict(v)) for k, v in scn["scenarios"].items()},
     }
+
+
+def _sanitize_dict(d: dict) -> dict:
+    """Nettoie un dict pour être compatible BSON (pas de NaN/Inf,
+    pas de clés avec '.' ou '$')."""
+    import math
+    out = {}
+    for k, v in d.items():
+        # MongoDB n'accepte pas les '.' dans les clés
+        safe_key = str(k).replace(".", "_").replace("$", "_")
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            v = 0.0
+        elif isinstance(v, dict):
+            v = _sanitize_dict(v)
+        elif isinstance(v, list):
+            v = _sanitize_list(v)
+        out[safe_key] = v
+    return out
+
+
+def _sanitize_list(lst: list) -> list:
+    import math
+    out = []
+    for v in lst:
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            out.append(0.0)
+        elif isinstance(v, dict):
+            out.append(_sanitize_dict(v))
+        elif isinstance(v, list):
+            out.append(_sanitize_list(v))
+        else:
+            out.append(v)
+    return out
 
 
 # --------------------------------------------------------------------- #
@@ -91,6 +124,7 @@ def _save_to_file(email: str, payload: dict) -> None:
 def _load_from_mongo(email: str) -> dict | None:
     col = mongo_store.scenarios_collection()
     if col is None:
+        print(f"[user_store] Mongo NOT enabled — cannot load for {email}")
         return None
     try:
         doc = col.find_one({"_id": email})
@@ -98,15 +132,23 @@ def _load_from_mongo(email: str) -> dict | None:
         print(f"[user_store] Mongo load error: {exc}")
         return None
     if not doc:
+        print(f"[user_store] Mongo: aucun document trouvé pour {email}")
         return None
     data = {"active": doc.get("active"),
             "scenarios": doc.get("scenarios") or {}}
-    return data if _is_valid(data) else None
+    if _is_valid(data):
+        print(f"[user_store] Mongo load OK for {email} "
+              f"(active={data['active']}, "
+              f"scenarios={list(data['scenarios'].keys())})")
+        return data
+    print(f"[user_store] Mongo: document invalide pour {email}")
+    return None
 
 
 def _save_to_mongo(email: str, payload: dict) -> bool:
     col = mongo_store.scenarios_collection()
     if col is None:
+        print(f"[user_store] Mongo NOT enabled — cannot save for {email}")
         return False
     try:
         now = _dt.datetime.utcnow()
@@ -124,6 +166,9 @@ def _save_to_mongo(email: str, payload: dict) -> bool:
             },
             upsert=True,
         )
+        print(f"[user_store] Mongo save OK for {email} "
+              f"(active={payload['active']}, "
+              f"scenarios={list(payload['scenarios'].keys())})")
         return True
     except Exception as exc:  # pragma: no cover
         print(f"[user_store] Mongo save error: {exc}")
@@ -186,7 +231,11 @@ def load_scenarios(email: str | None) -> dict | None:
 def save_scenarios(email: str | None, scn: dict | None) -> None:
     """Persiste la structure scénarios pour l'utilisateur."""
     email = _norm(email)
-    if not email or not _is_valid(scn):
+    if not email:
+        print("[user_store] save_scenarios: pas d'email — ignoré.")
+        return
+    if not _is_valid(scn):
+        print(f"[user_store] save_scenarios: données invalides pour {email} — ignoré.")
         return
     payload = _build_payload(scn)
     if mongo_store.is_enabled():

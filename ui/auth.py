@@ -258,10 +258,25 @@ def init_auth(app) -> None:
                     if cur:
                         doc = scol.find_one({"_id": cur})
                         if doc:
+                            scenarios_detail = {}
+                            for sname, sdata in (doc.get("scenarios") or {}).items():
+                                if isinstance(sdata, dict):
+                                    scenarios_detail[sname] = {
+                                        "_nb_keys": len(sdata),
+                                        "prix_immobilier": sdata.get("prix_immobilier"),
+                                        "taux_interet": sdata.get("taux_interet"),
+                                        "loyer_annuel_total": sdata.get("loyer_annuel_total"),
+                                        "mise_de_fond_pct": sdata.get("mise_de_fond_pct"),
+                                        "appreciation_annuelle": sdata.get("appreciation_annuelle"),
+                                        "nombre_investisseurs": sdata.get("nombre_investisseurs"),
+                                    }
+                                else:
+                                    scenarios_detail[sname] = str(type(sdata))
                             info["current_user_scenarios"] = {
                                 "active": doc.get("active"),
                                 "names": list((doc.get("scenarios")
                                                or {}).keys()),
+                                "details": scenarios_detail,
                                 "save_count": doc.get("save_count"),
                                 "updated_at": str(doc.get("updated_at")),
                             }

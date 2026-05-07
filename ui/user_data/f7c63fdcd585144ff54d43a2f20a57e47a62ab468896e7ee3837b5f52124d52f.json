@@ -1,8 +1,8 @@
 {
-  "active": "plex 2 personnes",
+  "active": "Scénario 2",
   "scenarios": {
-    "plex": {
-      "prix_immobilier": 750000,
+    "Scénario": {
+      "prix_immobilier": 850000,
       "prix_marche": 750000,
       "mise_de_fond_pct": 10,
       "duree_hypotheque_ans": 25,
@@ -48,8 +48,8 @@
         20
       ]
     },
-    "plex 2 personnes": {
-      "prix_immobilier": 750000,
+    "Scénario 2": {
+      "prix_immobilier": 850000,
       "prix_marche": 750000,
       "mise_de_fond_pct": 10,
       "duree_hypotheque_ans": 25,

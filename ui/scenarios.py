@@ -139,6 +139,8 @@ def register_callbacks(app):
         return [_scenario_row(n, n == active, can_delete) for n in names]
 
     # ---- Sauvegarde automatique sur disque (par utilisateur) ----------
+    _last_saved_hash = {}  # email → hash du dernier scénario sauvegardé
+
     @app.callback(
         Output("scenario-save-sink", "data"),
         Input("store-scenarios", "data"),
@@ -148,6 +150,7 @@ def register_callbacks(app):
         from flask import session, has_request_context
         from user_store import save_scenarios
         import mongo_store
+        import hashlib as _hl
 
         if not has_request_context():
             print("[scenarios] Pas de contexte Flask — sauvegarde ignorée.")
@@ -158,8 +161,19 @@ def register_callbacks(app):
             print("[scenarios] Pas d'utilisateur en session — sauvegarde ignorée.")
             return no_update
 
+        # Éviter les sauvegardes en double (même données)
+        try:
+            sig = _hl.md5(json.dumps(scn, sort_keys=True,
+                                      default=str).encode()).hexdigest()
+            if _last_saved_hash.get(email) == sig:
+                return no_update
+        except Exception:
+            sig = None
+
         try:
             save_scenarios(email, scn)
+            if sig:
+                _last_saved_hash[email] = sig
             print(f"[scenarios] Sauvegardé pour {email} "
                   f"(actif={scn.get('active') if scn else '?'}, "
                   f"nb={len((scn or {}).get('scenarios') or {})})")

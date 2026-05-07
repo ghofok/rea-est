@@ -10,8 +10,25 @@ from state import (FIELD_SECTIONS, EDITABLE_FIELDS, default_store_dict,
 from i18n import t
 
 
-def render():
+def render(initial_store: dict | None = None):
     inp = PropertyInputs()
+    # Si on a des valeurs sauvegardées, on les utilise pour pré-remplir
+    if initial_store:
+        from dataclasses import fields as dc_fields
+        for f in dc_fields(inp):
+            if f.name in initial_store and initial_store[f.name] is not None:
+                try:
+                    val = initial_store[f.name]
+                    cur = getattr(inp, f.name)
+                    if isinstance(cur, bool):
+                        val = bool(val)
+                    elif isinstance(cur, int):
+                        val = int(val)
+                    elif isinstance(cur, float):
+                        val = float(val)
+                    setattr(inp, f.name, val)
+                except Exception:
+                    pass
     cols = []
     for title, icon, flist in field_sections_translated():
         rows = []
@@ -37,7 +54,10 @@ def render():
         cols.append(dbc.Col(_section(title, rows, icon=icon), md=6, lg=4))
 
     # Jalons étude pluriannuelle
-    jalons_default = ", ".join(str(j) for j in inp.jalons_etude)
+    jalons = inp.jalons_etude
+    if initial_store and isinstance(initial_store.get("jalons_etude"), (list, tuple)):
+        jalons = initial_store["jalons_etude"]
+    jalons_default = ", ".join(str(j) for j in jalons)
     cols.append(dbc.Col(_section(
         t("milestones_title"),
         [dbc.Row([
@@ -92,19 +112,33 @@ def register_callbacks(app):
         Input("inp-jalons", "value"),
         State("store-inputs", "data"),
         State("store-scenarios", "data"),
+        prevent_initial_call=True,
     )
     def sync_inputs(*args):
         *values, jalons_str, current, scn = args
         data = dict(current) if current else default_store_dict()
+
+        changed = False
         for (attr, _, _), v in zip(EDITABLE_FIELDS, values):
+            if v is not None and data.get(attr) != v:
+                changed = True
             data[attr] = v
         if jalons_str:
             try:
-                data["jalons_etude"] = [int(x.strip())
-                                        for x in str(jalons_str).split(",")
-                                        if x.strip()]
+                new_jalons = [int(x.strip())
+                              for x in str(jalons_str).split(",")
+                              if x.strip()]
+                if new_jalons != data.get("jalons_etude"):
+                    changed = True
+                data["jalons_etude"] = new_jalons
             except Exception:
                 pass
+
+        if not changed:
+            # Rien n'a réellement changé — ne pas écraser le store
+            from dash import no_update
+            return no_update, no_update, ""
+
         # Persistance dans le scénario actif
         from scenarios import default_scenarios_dict
         scn = dict(scn) if scn else default_scenarios_dict()

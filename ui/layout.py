@@ -19,6 +19,13 @@ def _initial_scenarios() -> dict:
         email = session.get("user")
         saved = load_scenarios(email)
         if saved:
+            # Log détaillé pour diagnostic
+            for sname, sdata in saved.get("scenarios", {}).items():
+                print(f"[layout] Scénario '{sname}' chargé: "
+                      f"prix_immobilier={sdata.get('prix_immobilier')}, "
+                      f"taux_interet={sdata.get('taux_interet')}, "
+                      f"loyer_annuel_total={sdata.get('loyer_annuel_total')}, "
+                      f"mise_de_fond_pct={sdata.get('mise_de_fond_pct')}")
             return saved
     return default_scenarios_dict()
 
@@ -75,7 +82,8 @@ def build_layout():
     )
 
     tabs = dbc.Tabs(id="tabs", active_tab="tab-inputs", children=[
-        dbc.Tab(inputs_tab.render(),         label=t("tab_inputs"),
+        dbc.Tab(inputs_tab.render(initial_store=inputs0),
+                label=t("tab_inputs"),
                 tab_id="tab-inputs"),
         dbc.Tab(down_payment_tab.render(),   label=t("tab_downpayment"),
                 tab_id="tab-mise"),
